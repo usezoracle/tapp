@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/*
+ * Tapp PWA design tokens — mirrors the language already locked across
+ * users-app + tapp-merchant. Brand-green pill CTAs with near-black
+ * labels, white surfaces, subtle line borders, monochrome muted
+ * typography.
+ */
+@theme {
+  /* Brand */
+  --color-brand-green: #40FF00;
+  --color-brand-blue: #2775CA;
+
+  /* Ink / foreground */
+  --color-ink: #121212;
+  --color-ink-true: #000000;
+  --color-ink-800: #1F1F1F;
+  --color-ink-700: #333333;
+
+  /* Surfaces / backgrounds */
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F7F7F7;
+  --color-surface-bg: #FAFAFA;
+  --color-surface-muted: #ECECEC;
+  --color-surface-subtle: #F1F1F1;
+  --color-surface-disabled: #E5E5E5;
+  --color-surface-field: #F5F5F5;
+
+  /* Lines / borders */
+  --color-line: #D5D5D5;
+  --color-line-strong: #B5B5B5;
+  --color-line-muted: #DDDDDD;
+  --color-line-divider: #ECECEC;
+
+  /* Muted typography */
+  --color-muted: #838383;
+  --color-muted-text: #838383;
+  --color-muted-subtle: #ACACAC;
+  --color-muted-section: #5C5C5C;
+  --color-muted-secondary: #6F6F6F;
+  --color-muted-tertiary: #898989;
+  --color-muted-inactive: #BCBCBC;
+  --color-muted-disabled: #C8C8C8;
+
+  /* Semantic */
+  --color-success: #367C68;
+  --color-success-bg: rgba(54, 124, 104, 0.12);
+  --color-danger: #C0392B;
+  --color-danger-bg: rgba(192, 57, 43, 0.12);
+  --color-warning: #B7791F;
+  --color-warning-bg: rgba(183, 121, 31, 0.12);
+
+  /* Type */
+  --font-sans: var(--font-inter, system-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: var(--font-inter, system-ui), sans-serif;
+
+  /* Radii */
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 8px rgba(0, 0, 0, 0.03);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+html,
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numerals for amounts so digits don't shift width as they change */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hide scrollbars on horizontally-scrollable rows (e.g. card carousels) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
