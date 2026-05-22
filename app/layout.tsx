@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/lib/query-provider";
+import { GoogleProvider } from "@/lib/google-provider";
 import { ServiceWorkerRegistrar } from "./register-sw";
 
 export const metadata: Metadata = {
@@ -50,7 +51,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-surface text-ink">
-        <QueryProvider>{children}</QueryProvider>
+        <GoogleProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </GoogleProvider>
         <ServiceWorkerRegistrar />
       </body>
     </html>
