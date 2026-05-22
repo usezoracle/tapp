@@ -69,7 +69,7 @@ async function request<T>(
 }
 
 // -----------------------------------------------------------------------------
-// Cards (cardholder-scope)
+// Cards (cardholder-scope) — see rails/docs/tapp-card-spec.md
 // -----------------------------------------------------------------------------
 
 export interface CardClaimResponse {
@@ -77,17 +77,92 @@ export interface CardClaimResponse {
   status: "claimed" | "live";
 }
 
+export interface CardLinkCompleteRequest {
+  card_uid_hash:               string; // hex sha256 of factory UID
+  cap_object_id:               string; // Sui object id from create_cap tx
+  coin_type:                   string; // e.g. "0x...::usdc::USDC"
+  linking_proof:               string; // hex(HMAC(K', "linking-anchor-v1"))
+  pin_verifier:                string; // hex(HMAC(K,  "tapp-card-verifier-v1"))
+  card_password:               string; // hex of 4-byte NTAG215 PWD
+  current_token_ct:            string; // hex of initial rotation token
+  tx_digest:                   string; // Sui digest of create_cap
+  daily_limit_subunit:         number;
+  per_tap_limit_subunit:       number;
+  step_up_threshold_subunit:   number;
+}
+
+export interface CardSummary {
+  id: string;
+  status: "issued" | "claimed" | "live" | "revoked" | "locked";
+  cap_object_id?: string;
+  coin_type?: string;
+  daily_limit_subunit: number;
+  per_tap_limit_subunit: number;
+  step_up_threshold_subunit: number;
+  spent_today_subunit: number;
+  needs_resync: boolean;
+  pin_attempts_remaining: number;
+}
+
+export interface PtbSkeleton {
+  package_id: string;
+  module: string;
+  function: string;
+  type_args: string[];
+  args: unknown[];
+  note?: string;
+}
+
+export interface ResyncPayload {
+  current_token_ct: string;
+  card_password: string;
+  resync_nonce: string;
+}
+
 export const cardsApi = {
-  /**
-   * Claim a freshly-issued card by its activation token. PoC scope:
-   * the cardholder taps a fresh card, OS opens `/c/:token`, the
-   * backend redirects to `/link?token=…`, this call flips the
-   * card's status `issued → claimed` and binds it to the signed-in
-   * user.
-   */
+  /** Claim a freshly-issued card by its activation token (Act 1). */
   claim: (token: string, jwt: string) =>
     request<CardClaimResponse>("POST", "/v1/cards/link/claim", {
       body: { token },
       token: jwt,
     }),
+
+  /**
+   * Complete linking after PWA: writes K to card, builds + signs
+   * create_cap PTB, and POSTs all the verifier bytes here so the
+   * server can validate per-debit PIN responses later.
+   */
+  linkComplete: (body: CardLinkCompleteRequest, jwt: string) =>
+    request<{ card_id: string; status: "live" }>(
+      "POST",
+      "/v1/cards/link/complete",
+      { body, token: jwt },
+    ),
+
+  /** Dashboard summary for the signed-in cardholder. */
+  me: (jwt: string) =>
+    request<CardSummary>("GET", "/v1/cards/me", { token: jwt }),
+
+  /** Returns the PTB skeleton the PWA signs to add USDC to the cap. */
+  topUp: (amount_subunit: number, jwt: string) =>
+    request<PtbSkeleton>("POST", "/v1/cards/top-up", {
+      body: { amount_subunit },
+      token: jwt,
+    }),
+
+  /** Returns the PTB skeleton the PWA signs to flip set_revoked(true). */
+  revoke: (jwt: string) =>
+    request<PtbSkeleton>("POST", "/v1/cards/revoke", { token: jwt }),
+
+  /** Issues the canonical rotation token + a one-shot nonce. */
+  resync: (jwt: string) =>
+    request<ResyncPayload>("POST", "/v1/cards/me/resync", { token: jwt }),
+
+  /** Confirms the cardholder wrote the token back to the card. */
+  resyncComplete: (resync_nonce: string, jwt: string) =>
+    request<{ acknowledged: true }>(
+      "POST",
+      "/v1/cards/me/resync/complete",
+      { body: { resync_nonce }, token: jwt },
+    ),
 };

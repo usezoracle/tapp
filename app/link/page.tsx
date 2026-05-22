@@ -40,7 +40,14 @@ function LinkPageBody() {
   if (!token) return <NoTokenState />;
   if (!hydrated) return <LoadingState />;
   if (!session) return <SignInState token={token} />;
-  return <ClaimingState token={token} jwt={session.jwt} onDone={(id) => router.replace(`/dashboard/cards/${id}`)} />;
+  // After claim → configure step (Act 2 of the linking flow).
+  return (
+    <ClaimingState
+      token={token}
+      jwt={session.jwt}
+      onDone={(id) => router.replace(`/link/configure?card=${id}`)}
+    />
+  );
 }
 
 // -----------------------------------------------------------------------------

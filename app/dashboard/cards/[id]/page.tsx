@@ -1,67 +1,184 @@
+"use client";
+
+import { use, useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { Screen } from "@/components/ui/Screen";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
+import { useSession } from "@/lib/auth";
+import { cardsApi, type CardSummary } from "@/lib/api";
+import { formatNgn } from "@/lib/utils";
 
 /**
- * Per-card view. PoC scope = success page after a claim, showing
- * the card ID and a placeholder for the upcoming top-up / activity
- * surface. The full screen (balance, limits, recent debits, top-up,
- * resync, revoke) lands when the post-PoC card endpoints ship — see
- * `docs/linking-flow.md` for the eventual spec.
+ * Per-card dashboard. v1 = 1:1 user↔card, so the `id` param is
+ * informational — we resolve the user's card via `/v1/cards/me`. The
+ * URL keeps the id for stable shareability + future multi-card.
  *
- * In Next 16, dynamic params arrive as `Promise<{ id }>` and must
- * be awaited (deprecation noted in the upgrade guide).
+ * Surfaces:
+ *   - Status pill + balance / limits
+ *   - "Needs resync" banner that deep-links to /cards/resync
+ *   - Top-up / revoke CTAs
  */
-export default async function CardPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+export default function CardPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const { hydrated, session } = useSession();
+
+  useEffect(() => {
+    if (hydrated && !session) router.replace(`/sign-in?next=/dashboard/cards/${id}`);
+  }, [hydrated, session, router, id]);
+
+  const cardQuery = useQuery({
+    queryKey: ["cards", "me"],
+    queryFn: () => cardsApi.me(session!.jwt),
+    enabled: !!session,
+  });
 
   return (
     <Screen>
-      <header className="flex items-center justify-between mb-10">
+      <header className="flex items-center justify-between mb-8">
         <Logo />
-        <Link
-          href="/dashboard"
-          className="text-sm text-muted-text hover:text-ink"
-        >
+        <Link href="/dashboard" className="text-sm text-muted-text hover:text-ink">
           Dashboard
         </Link>
       </header>
 
-      <div className="flex flex-col items-center text-center gap-6">
-        <CheckCircle2 size={56} className="text-success" strokeWidth={1.6} />
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-ink">Card linked</h1>
-          <p className="text-muted-text">
-            You can now use this card at any Tapp Merchant.
+      {!hydrated || !session ? null : cardQuery.isLoading ? (
+        <CardLoading />
+      ) : cardQuery.isError ? (
+        <CardError message={cardQuery.error instanceof Error ? cardQuery.error.message : "Failed to load card"} />
+      ) : cardQuery.data ? (
+        <CardView card={cardQuery.data} cardIdFromUrl={id} />
+      ) : null}
+    </Screen>
+  );
+}
+
+function CardLoading() {
+  return (
+    <div className="flex justify-center py-20">
+      <div
+        aria-hidden
+        className="w-8 h-8 rounded-full border-2 border-line-muted border-t-brand-green animate-spin"
+      />
+    </div>
+  );
+}
+
+function CardError({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center text-center gap-4 py-12">
+      <p className="text-danger">{message}</p>
+      <Link href="/dashboard">
+        <Button variant="secondary">Back</Button>
+      </Link>
+    </div>
+  );
+}
+
+function CardView({ card, cardIdFromUrl }: { card: CardSummary; cardIdFromUrl: string }) {
+  const idMatch = card.id === cardIdFromUrl;
+
+  return (
+    <div className="space-y-6">
+      {!idMatch ? (
+        <p className="text-xs text-muted-subtle">
+          Showing your current card. The link you opened was for a different
+          card.
+        </p>
+      ) : null}
+
+      {/* Status hero */}
+      <div className="rounded-2xl bg-surface-soft border border-line-divider p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <StatusBadge status={card.status} />
+          <span className="text-xs text-muted-subtle font-mono break-all">
+            {card.id.slice(0, 8)}…
+          </span>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-subtle uppercase tracking-wider">
+            Today&apos;s spend
+          </p>
+          <p className="text-3xl font-semibold text-ink tabular-nums">
+            {formatNgn(card.spent_today_subunit / 100)}{" "}
+            <span className="text-base text-muted-text font-normal">
+              / {formatNgn(card.daily_limit_subunit / 100)}
+            </span>
           </p>
         </div>
 
-        <div className="w-full rounded-2xl border border-line-divider bg-surface-soft p-5 text-left">
-          <p className="text-xs uppercase tracking-wider text-muted-subtle mb-1">
-            Card ID
-          </p>
-          <p className="text-sm font-mono text-ink break-all">{id}</p>
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <Stat
+            label="Per-tap limit"
+            value={formatNgn(card.per_tap_limit_subunit / 100)}
+          />
+          <Stat
+            label="Step-up above"
+            value={formatNgn(card.step_up_threshold_subunit / 100)}
+          />
         </div>
+      </div>
 
-        <div className="w-full rounded-2xl border border-line-divider bg-surface p-5 text-left space-y-2">
-          <h2 className="font-semibold text-ink">What&apos;s next</h2>
-          <p className="text-sm text-muted-text">
-            Top-up, daily limits, and tap history will appear here once the
-            funding flow ships. For PoC: this confirms the card-to-account
-            binding worked end-to-end.
-          </p>
+      {card.needs_resync ? (
+        <div className="rounded-2xl bg-warning-bg border border-warning p-4 flex items-start gap-3">
+          <AlertTriangle size={20} className="text-warning shrink-0 mt-0.5" />
+          <div className="space-y-2 flex-1">
+            <p className="text-sm font-medium text-ink">Card needs to resync</p>
+            <p className="text-xs text-muted-text">
+              The last tap didn&apos;t finish writing. Run resync to bring your
+              card back in sync.
+            </p>
+            <Link href="/cards/resync">
+              <Button variant="secondary" fullWidth={false}>
+                Resync now
+              </Button>
+            </Link>
+          </div>
         </div>
+      ) : null}
 
-        <Link href="/dashboard" className="w-full">
-          <Button variant="secondary">Back to dashboard</Button>
+      <div className="space-y-3">
+        <Link href="/cards/top-up">
+          <Button>Top up</Button>
+        </Link>
+        <Link href="/cards/revoke">
+          <Button variant="secondary">Revoke card</Button>
         </Link>
       </div>
-    </Screen>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: CardSummary["status"] }) {
+  const styles: Record<CardSummary["status"], string> = {
+    issued:  "bg-surface-subtle text-muted-text",
+    claimed: "bg-surface-subtle text-muted-text",
+    live:    "bg-success-bg text-success",
+    revoked: "bg-danger-bg text-danger",
+    locked:  "bg-warning-bg text-warning",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${styles[status]}`}
+    >
+      {status === "live" ? <CheckCircle2 size={12} /> : null}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-surface p-3">
+      <p className="text-[10px] text-muted-subtle uppercase tracking-wider">
+        {label}
+      </p>
+      <p className="text-sm font-semibold text-ink tabular-nums">{value}</p>
+    </div>
   );
 }
