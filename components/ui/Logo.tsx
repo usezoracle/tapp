@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Wordmark for the Tapp PWA — minimal, all-caps, tight tracking.
- * Replaceable when brand design lands a final logo asset.
+ * Wordmark for the Tapp PWA — text-based, no brand logo SVG (kept
+ * intentional per user direction: icons-only from svg-list, not the
+ * wordmark logo).
  */
 export function Logo({ className }: { className?: string }) {
   return (

@@ -1,13 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/query-provider";
 import { ServiceWorkerRegistrar } from "./register-sw";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Zoracle",
@@ -42,7 +36,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className="h-full antialiased">
+      <head>
+        {/*
+          Clash Grotesk via Fontshare (Indian Type Foundry). Not on
+          Google Fonts so we can't use `next/font/google`. Preconnect +
+          stylesheet keeps the FOUT short.
+        */}
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link
+          rel="stylesheet"
+          href="https://api.fontshare.com/v2/css?f[]=clash-grotesk@300,400,500,600,700&display=swap"
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <QueryProvider>{children}</QueryProvider>
         <ServiceWorkerRegistrar />

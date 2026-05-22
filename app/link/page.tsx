@@ -2,10 +2,12 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CreditCard, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { Screen } from "@/components/ui/Screen";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+import { IconContactlessCard, IconSuccessBadge } from "@/lib/icons";
 import { useSession } from "@/lib/auth";
 import { cardsApi, ApiError } from "@/lib/api";
 
@@ -48,7 +50,7 @@ function NoTokenState() {
     <Screen centered>
       <div className="flex flex-col items-center gap-8 text-center">
         <Logo />
-        <CreditCard size={48} className="text-muted-subtle" strokeWidth={1.5} />
+        <Icon xml={IconContactlessCard} width={56} height={78} className="opacity-50" />
         <div className="space-y-3">
           <h1 className="text-2xl font-semibold text-ink">No card detected</h1>
           <p className="text-muted-text">
@@ -79,8 +81,8 @@ function SignInState({ token }: { token: string }) {
     <Screen centered>
       <div className="flex flex-col items-center gap-8 text-center">
         <Logo />
-        <div className="w-16 h-16 rounded-full bg-brand-green/15 flex items-center justify-center">
-          <CreditCard size={28} className="text-ink-true" strokeWidth={1.8} />
+        <div className="w-20 h-20 rounded-full bg-brand-green/15 flex items-center justify-center">
+          <Icon xml={IconContactlessCard} width={36} height={50} />
         </div>
         <div className="space-y-3">
           <h1 className="text-2xl font-semibold text-ink">
@@ -155,7 +157,7 @@ function ClaimingState({
     return (
       <Screen centered>
         <div className="flex flex-col items-center gap-6 text-center">
-          <ShieldCheck size={48} className="text-success" strokeWidth={1.6} />
+          <Icon xml={IconSuccessBadge} size={84} />
           <p className="text-ink">This card is already linked to your account.</p>
           <a href="/dashboard" className="w-full">
             <Button variant="secondary">Open dashboard</Button>
