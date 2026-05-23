@@ -34,6 +34,7 @@ import {
   getExtendedEphemeralPublicKey,
   jwtToAddress,
   getZkLoginSignature,
+  genAddressSeed,
   type ZkLoginSignatureInputs,
 } from "@mysten/sui/zklogin";
 import { decodeJwt } from "jose";
@@ -41,7 +42,7 @@ import { decodeJwt } from "jose";
 const STORAGE_KEY = "tapp.zklogin.v1";
 const SALT_SERVICE_URL =
   process.env.NEXT_PUBLIC_ZKLOGIN_SALT_URL ??
-  "https://salt.api.mystenlabs.com/get_salt"; // Mysten testnet salt service
+  "/api/salt";
 const PROVER_URL =
   process.env.NEXT_PUBLIC_ZKLOGIN_PROVER_URL ??
   "https://prover-dev.mystenlabs.com/v1";
@@ -91,7 +92,7 @@ export async function startZkLoginSession(): Promise<ZkLoginSession> {
   const nonce = generateNonce(kp.getPublicKey(), maxEpoch, randomness);
 
   const session: ZkLoginSession = {
-    ephemeralPrivateKey: bytesToB64(kp.getSecretKey() as unknown as Uint8Array),
+    ephemeralPrivateKey: kp.getSecretKey(),
     ephemeralPublicKey: bytesToB64(kp.getPublicKey().toRawBytes()),
     extendedPubKey: extPubKey,
     randomness,
@@ -140,7 +141,7 @@ export async function completeZkLoginSession(jwt: string): Promise<ZkLoginSessio
  * `proveZkLogin()`.
  */
 export async function executeZkLoginTx(
-  buildTx: (tx: Transaction) => void,
+  buildTx: (tx: Transaction) => void | Promise<void>,
 ): Promise<{ digest: string; effects?: unknown }> {
   const session = readSession();
   if (!session?.jwt || !session.salt || !session.suiAddress) {
@@ -149,16 +150,51 @@ export async function executeZkLoginTx(
 
   const tx = new Transaction();
   tx.setSender(session.suiAddress);
-  buildTx(tx);
+  await buildTx(tx);
 
   const client = suiClient();
   const ephemeralKp = restoreKeypair(session);
 
-  // Sign the tx with the ephemeral key. zkLogin signature attaches
-  // the proof + the JWT, NOT the ephemeral pubkey directly — the
-  // prover binds them.
-  const txBytes = await tx.build({ client });
-  const { signature: ephemeralSig } = await ephemeralKp.signTransaction(txBytes);
+  // Build the transaction kind first.
+  const kindBytes = await tx.build({ client, onlyTransactionKind: true });
+  const kindB64 = Buffer.from(kindBytes).toString("base64");
+
+  // Get Rails JWT token for authentication of backend endpoint.
+  let railsToken = "";
+  if (typeof window !== "undefined") {
+    try {
+      const rawRails = window.localStorage.getItem("tapp.session.v1");
+      if (rawRails) {
+        const parsedRails = JSON.parse(rawRails);
+        if (parsedRails && parsedRails.jwt) {
+          railsToken = parsedRails.jwt;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to read Rails session from localStorage", e);
+    }
+  }
+
+  // Call the gas-station sponsor endpoint.
+  const sponsorRes = await fetch("/api/gas-station/sponsor", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${railsToken || session.jwt}`,
+    },
+    body: JSON.stringify({ txBytes: kindB64, sender: session.suiAddress }),
+  });
+  if (!sponsorRes.ok) {
+    const errorText = await sponsorRes.text();
+    throw new Error(`Gas sponsorship failed: ${errorText}`);
+  }
+  const { sponsoredTxBytes, sponsorSignature } = (await sponsorRes.json()) as {
+    sponsoredTxBytes: string;
+    sponsorSignature: string;
+  };
+
+  const finalTxBytesBytes = Uint8Array.from(Buffer.from(sponsoredTxBytes, "base64"));
+  const { signature: ephemeralSig } = await ephemeralKp.signTransaction(finalTxBytesBytes);
 
   const proofInputs = await proveZkLogin({
     jwt: session.jwt,
@@ -169,15 +205,30 @@ export async function executeZkLoginTx(
     keyClaimName: "sub",
   });
 
+  const claims = decodeJwt(session.jwt);
+  if (!claims.sub || !claims.aud) {
+    throw new Error("Invalid JWT in session: missing sub or aud claim");
+  }
+  const aud = Array.isArray(claims.aud) ? claims.aud[0] : claims.aud;
+  const addressSeed = genAddressSeed(
+    BigInt(session.salt),
+    "sub",
+    claims.sub,
+    aud,
+  ).toString();
+
   const zkLoginSignature = getZkLoginSignature({
-    inputs: proofInputs,
+    inputs: {
+      ...proofInputs,
+      addressSeed,
+    },
     maxEpoch: session.maxEpoch,
     userSignature: ephemeralSig,
   });
 
   const result = await client.executeTransactionBlock({
-    transactionBlock: txBytes,
-    signature: zkLoginSignature,
+    transactionBlock: finalTxBytesBytes,
+    signature: [zkLoginSignature, sponsorSignature],
     options: { showEffects: true },
   });
   return { digest: result.digest, effects: result.effects };
@@ -252,7 +303,48 @@ export function clearSession(): void {
 }
 
 function restoreKeypair(s: ZkLoginSession): Ed25519Keypair {
-  return Ed25519Keypair.fromSecretKey(b64ToBytes(s.ephemeralPrivateKey));
+  const keyStr = s.ephemeralPrivateKey;
+
+  // Current format: bech32 "suiprivkey1…" (~71 chars) — pass straight through.
+  if (keyStr.startsWith("suiprivkey")) {
+    return Ed25519Keypair.fromSecretKey(keyStr);
+  }
+
+  // Legacy formats stored as base64.
+  let decoded: Uint8Array;
+  try {
+    decoded = b64ToBytes(keyStr);
+  } catch {
+    throw new Error(
+      "Ephemeral key is corrupt — sign out and back in to create a fresh zkLogin session.",
+    );
+  }
+
+  // Legacy format A: the base64 payload is the UTF-8 bytes of a bech32 string
+  // (old code did `btoa(String.fromCharCode(...bech32Bytes))`).
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(decoded);
+    if (text.startsWith("suiprivkey")) {
+      return Ed25519Keypair.fromSecretKey(text);
+    }
+  } catch {
+    // Not valid UTF-8 — fall through to raw-byte handling.
+  }
+
+  // Legacy format B: raw 32-byte Ed25519 seed.
+  if (decoded.length === 32) {
+    return Ed25519Keypair.fromSecretKey(decoded);
+  }
+
+  // Legacy format C: raw 64-byte "full" keypair (seed + pubkey).
+  if (decoded.length === 64) {
+    return Ed25519Keypair.fromSecretKey(decoded.slice(0, 32));
+  }
+
+  // Anything else is unrecoverable.
+  throw new Error(
+    "Ephemeral key format is unrecognised — sign out and back in to create a fresh zkLogin session.",
+  );
 }
 
 function bytesToB64(b: Uint8Array): string {
