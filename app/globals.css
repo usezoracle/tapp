@@ -1,85 +1,153 @@
 @import "tailwindcss";
 
 /*
- * Tapp PWA design tokens — mirrors the language already locked across
- * users-app + tapp-merchant. Brand-green pill CTAs with near-black
- * labels, white surfaces, subtle line borders, monochrome muted
- * typography.
+ * Tapp PWA — design system mirrors paycrest/zap.
+ * Mobile-first column, white / neutral-900 dark mode, royal-blue
+ * accent. Single source of truth for tokens; per-component classes
+ * still come from src/components/ui/Styles.ts.
  */
+
 @theme {
-  /* Brand */
-  --color-brand-green: #40FF00;
-  --color-brand-blue: #2775CA;
+  --color-royal: #0065F5;
 
-  /* Ink / foreground */
-  --color-ink: #121212;
-  --color-ink-true: #000000;
-  --color-ink-800: #1F1F1F;
-  --color-ink-700: #333333;
+  /* Mobile container width: 412px content + 16px padding either side */
+  --max-width-mobile: 428px;
 
-  /* Surfaces / backgrounds */
-  --color-surface: #FFFFFF;
-  --color-surface-soft: #F7F7F7;
-  --color-surface-bg: #FAFAFA;
-  --color-surface-muted: #ECECEC;
-  --color-surface-subtle: #F1F1F1;
-  --color-surface-disabled: #E5E5E5;
-  --color-surface-field: #F5F5F5;
-
-  /* Lines / borders */
-  --color-line: #D5D5D5;
-  --color-line-strong: #B5B5B5;
-  --color-line-muted: #DDDDDD;
-  --color-line-divider: #ECECEC;
-
-  /* Muted typography */
-  --color-muted: #838383;
-  --color-muted-text: #838383;
-  --color-muted-subtle: #ACACAC;
-  --color-muted-section: #5C5C5C;
-  --color-muted-secondary: #6F6F6F;
-  --color-muted-tertiary: #898989;
-  --color-muted-inactive: #BCBCBC;
-  --color-muted-disabled: #C8C8C8;
-
-  /* Semantic */
-  --color-success: #367C68;
-  --color-success-bg: rgba(54, 124, 104, 0.12);
-  --color-danger: #C0392B;
-  --color-danger-bg: rgba(192, 57, 43, 0.12);
-  --color-warning: #B7791F;
-  --color-warning-bg: rgba(183, 121, 31, 0.12);
-
-  /* Type — Clash Grotesk via Fontshare (Indian Type Foundry). */
-  --font-sans: "ClashGrotesk-Variable", "Clash Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-display: "ClashGrotesk-Variable", "Clash Grotesk", system-ui, sans-serif;
-
-  /* Radii */
-  --radius-pill: 9999px;
-
-  /* Shadows */
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 8px rgba(0, 0, 0, 0.03);
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.08);
+  /* Font stack — Inter via next/font (variable wired in layout.tsx) */
+  --font-sans: var(--font-inter, system-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+/* Tailwind v4 class-based dark mode (mirrors zap's `darkMode: "class"`). */
+@variant dark (&:where(.dark, .dark *));
 
 html,
 body {
-  background: var(--color-surface);
-  color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tabular numerals for amounts so digits don't shift width as they change */
+/* Zap's number-input chrome removal + select chrome removal. Tap Card
+   flows have numeric PIN inputs; this keeps the look clean. */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Hide scrollbars on horizontally-scrollable rows (e.g. card carousels) */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+.loader {
+  width: 48px;
+  height: 48px;
+  margin: auto;
+  position: relative;
 }
-.no-scrollbar {
-  scrollbar-width: none;
+
+.loader:before {
+  content: "";
+  width: 48px;
+  height: 5px;
+  background: #0066f550;
+  position: absolute;
+  top: 60px;
+  left: 0;
+  border-radius: 50%;
+  animation: shadow324 0.5s linear infinite;
+}
+
+.loader:after {
+  content: "";
+  width: 100%;
+  height: 100%;
+  background: #0065f5;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 4px;
+  animation: jump7456 0.5s linear infinite;
+}
+
+@keyframes jump7456 {
+  15% {
+    border-bottom-right-radius: 3px;
+  }
+
+  25% {
+    transform: translateY(9px) rotate(22.5deg);
+  }
+
+  50% {
+    transform: translateY(18px) scale(1, 0.9) rotate(45deg);
+    border-bottom-right-radius: 40px;
+  }
+
+  75% {
+    transform: translateY(9px) rotate(67.5deg);
+  }
+
+  100% {
+    transform: translateY(0) rotate(90deg);
+  }
+}
+
+@keyframes shadow324 {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+
+  50% {
+    transform: scale(1.2, 1);
+  }
+}
+
+/* Aurora background animations for the Tapp Card promotion card */
+@keyframes aurora-1 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(25px, -15px) scale(1.15);
+  }
+  66% {
+    transform: translate(-15px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes aurora-2 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(-20px, 15px) scale(0.85);
+  }
+  66% {
+    transform: translate(15px, -20px) scale(1.1);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-aurora-1 {
+  animation: aurora-1 15s ease-in-out infinite;
+}
+
+.animate-aurora-2 {
+  animation: aurora-2 20s ease-in-out infinite;
 }

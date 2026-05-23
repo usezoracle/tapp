@@ -2,10 +2,16 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PiCheckCircleFill } from "react-icons/pi";
 import { Screen } from "@/components/ui/Screen";
-import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { InputError } from "@/components/ui/InputError";
+import { StatusChip } from "@/components/ui/StatusChip";
+import {
+  AnimatedComponent,
+  slideInOut,
+} from "@/components/ui/AnimatedComponents";
 import { IconContactlessCard } from "@/lib/icons";
 import {
   deriveLinkingProofs,
@@ -14,18 +20,14 @@ import {
   randomBytes,
   uidHash,
 } from "@/lib/cardCrypto";
-import { packCardPayload, readCardPayload, webNfcSupported, writeCardPayload } from "@/lib/webnfc";
+import {
+  packCardPayload,
+  readCardPayload,
+  webNfcSupported,
+  writeCardPayload,
+} from "@/lib/webnfc";
 import { useLinkStore } from "@/lib/cardLinkStore";
 
-/**
- * Step 3 of 4 — Web NFC write of K (the on-card secret) and the
- * initial rotation token. We generate K + the rotation token here,
- * compute the linking_proof and pin_verifier from K + the chosen PIN,
- * then write `K || token` to the card sector.
- *
- * On success we navigate to /link/sign where the cardholder zkLogin-
- * signs the create_cap PTB to fund the on-chain cap object.
- */
 export default function LinkWritePage() {
   return (
     <Suspense fallback={<Screen centered />}>
@@ -48,7 +50,6 @@ function Body() {
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState<string | null>(null);
 
-  // Bounce back if state is missing — e.g. user landed here directly.
   useEffect(() => {
     if (!cardId || !pin) router.replace("/dashboard");
   }, [cardId, pin, router]);
@@ -65,8 +66,6 @@ function Body() {
         );
       }
 
-      // Generate K, the rotation token, the card password, and the
-      // HMAC derivatives the server will commit to.
       const K = randomBytes(32);
       const rotationToken = newRotationToken();
       const cardPassword = newCardPassword();
@@ -75,12 +74,6 @@ function Body() {
 
       await writeCardPayload(payload);
 
-      // After write, read the UID back so we can hash it. Web NFC's
-      // write() doesn't expose the serial directly, so we do a quick
-      // read on the next tap. UX-wise it's the same tap action.
-      // TODO: combine read+write into one tap via NDEFReader.scan()
-      // followed by .write() with the same signal — Chromium supports
-      // this in recent versions.
       const { uid } = await readCardPayload();
       const cardUidHash = uidHash(uid);
 
@@ -99,8 +92,10 @@ function Body() {
 
   return (
     <Screen centered>
-      <div className="flex flex-col items-center text-center gap-8">
-        <Logo />
+      <AnimatedComponent
+        variant={slideInOut}
+        className="flex flex-col items-center gap-8 text-center"
+      >
         {phase === "ready" ? (
           <ReadyState onStart={startWrite} />
         ) : phase === "writing" ? (
@@ -110,7 +105,7 @@ function Body() {
         ) : (
           <ErrorState message={error} onRetry={startWrite} />
         )}
-      </div>
+      </AnimatedComponent>
     </Screen>
   );
 }
@@ -118,14 +113,14 @@ function Body() {
 function ReadyState({ onStart }: { onStart: () => void }) {
   return (
     <>
-      <div className="w-24 h-24 rounded-full bg-brand-green/15 items-center justify-center flex">
-        <Icon xml={IconContactlessCard} width={44} height={62} />
-      </div>
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-ink">Tap your card</h1>
-        <p className="text-muted-text">
-          Place the card against the back of your phone. We&apos;ll set it up in
-          a single tap.
+      <Icon xml={IconContactlessCard} width={56} height={78} className="opacity-60" />
+      <div className="space-y-3">
+        <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+          Tap your card
+        </h1>
+        <p className="max-w-xs text-sm text-gray-500 dark:text-white/50">
+          Place the card against the back of your phone. We&apos;ll set it up
+          in a single tap.
         </p>
       </div>
       <Button onClick={onStart}>Start</Button>
@@ -136,11 +131,10 @@ function ReadyState({ onStart }: { onStart: () => void }) {
 function WritingState() {
   return (
     <>
-      <div
-        aria-hidden
-        className="w-10 h-10 rounded-full border-2 border-line-muted border-t-brand-green animate-spin"
-      />
-      <p className="text-muted-text">Writing to your card — keep it on the phone…</p>
+      <div className="loader" />
+      <p className="text-sm text-gray-500 dark:text-white/50">
+        Writing to your card — keep it on the phone…
+      </p>
     </>
   );
 }
@@ -148,13 +142,15 @@ function WritingState() {
 function DoneState({ onNext }: { onNext: () => void }) {
   return (
     <>
-      <div className="w-24 h-24 rounded-full bg-success-bg flex items-center justify-center">
-        <span className="text-4xl">✓</span>
-      </div>
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-ink">Card configured</h1>
-        <p className="text-muted-text">
-          Last step: confirm with Google to fund the card on-chain.
+      <StatusChip tone="success" icon={<PiCheckCircleFill />}>
+        Card configured
+      </StatusChip>
+      <div className="space-y-3">
+        <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+          Card configured
+        </h1>
+        <p className="max-w-xs text-sm text-gray-500 dark:text-white/50">
+          Last step — confirm with Google to fund the card on-chain.
         </p>
       </div>
       <Button onClick={onNext}>Continue</Button>
@@ -165,7 +161,7 @@ function DoneState({ onNext }: { onNext: () => void }) {
 function ErrorState({ message, onRetry }: { message: string | null; onRetry: () => void }) {
   return (
     <>
-      <p className="text-danger text-center">{message ?? "Something went wrong"}</p>
+      <InputError message={message ?? "Something went wrong"} />
       <Button onClick={onRetry}>Try again</Button>
     </>
   );

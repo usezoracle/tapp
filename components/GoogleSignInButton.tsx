@@ -1,80 +1,90 @@
 "use client";
 
-import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { IconGoogle } from "@/lib/icons";
-import { signInWithGoogleCredential, type Session } from "@/lib/auth";
+import {
+  buildGoogleAuthUrl,
+  defaultRedirectUri,
+} from "@/lib/google-oauth";
+import { startZkLoginSession } from "@/lib/zklogin";
 
 interface Props {
-  onSuccess: (session: Session) => void;
-  /**
-   * Label for the visible button. The real Google button renders
-   * underneath as a transparent overlay (Google's branding rules
-   * require their own widget for the click); we just style the
-   * surrounding shell to match the rest of the app.
-   */
+  /** Where to bounce back to after the post-callback completion. */
+  nextHref?: string;
   label?: string;
 }
 
+const NEXT_STORAGE_KEY = "tapp.signin.next.v1";
+
 /**
- * Google Sign-In CTA. Renders our brand pill on top + Google's own
- * widget invisibly below (Google requires their official widget for
- * the click; we can't ship a plain button per their terms).
+ * Kicks off the manual Google OAuth implicit-flow redirect with the
+ * zkLogin nonce attached. The callback is handled in
+ * `app/sign-in/page.tsx` — see `completeAuth` in `lib/auth.ts`.
+ *
+ * If `NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` isn't set, we surface a
+ * clear error rather than silently failing.
  */
 export function GoogleSignInButton({
-  onSuccess,
+  nextHref = "/wallet",
   label = "Continue with Google",
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function start() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
+    if (!clientId) {
+      setError(
+        "Google sign-in isn't configured. Set NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID and reload.",
+      );
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      // Bootstrap a zkLogin session — ephemeral keypair, randomness,
+      // nonce. Persisted in localStorage so the OAuth callback can pick
+      // it up after Google redirects back.
+      const { nonce } = await startZkLoginSession();
+      const redirectUri = defaultRedirectUri();
+      window.localStorage.setItem(NEXT_STORAGE_KEY, nextHref);
+      window.location.assign(
+        buildGoogleAuthUrl({ clientId, redirectUri, nonce }),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't start sign-in");
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="w-full space-y-3">
-      <div className="relative w-full">
-        <Button
-          variant="secondary"
-          loading={loading}
-          leadingIcon={<Icon xml={IconGoogle} size={20} />}
-          // The actual Google widget sits on top — this button is
-          // visual-only and pointer-events:none. We keep it in the
-          // tree so the layout matches the rest of the PIN-pad / CTA
-          // surfaces in the app.
-          className="pointer-events-none"
-        >
-          {label}
-        </Button>
-        <div className="absolute inset-0 opacity-0">
-          <GoogleLogin
-            useOneTap={false}
-            onSuccess={async (cred) => {
-              if (!cred.credential) {
-                setError("Google didn't return a credential");
-                return;
-              }
-              setError(null);
-              setLoading(true);
-              try {
-                const session = await signInWithGoogleCredential(cred.credential);
-                onSuccess(session);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Sign-in failed");
-              } finally {
-                setLoading(false);
-              }
-            }}
-            onError={() => setError("Google sign-in was cancelled")}
-            width="100%"
-            theme="filled_black"
-          />
-        </div>
-      </div>
+      <Button
+        variant="secondary"
+        loading={loading}
+        onClick={start}
+        leadingIcon={<Icon xml={IconGoogle} size={20} />}
+      >
+        {label}
+      </Button>
       {error ? (
-        <p className="text-sm text-danger text-center" role="alert">
+        <p
+          className="text-center text-sm text-red-600 dark:text-red-400"
+          role="alert"
+        >
           {error}
         </p>
       ) : null}
     </div>
   );
+}
+
+/** Read + clear the "next" href stored before the OAuth redirect. */
+export function takeNextHref(): string | null {
+  if (typeof window === "undefined") return null;
+  const v = window.localStorage.getItem(NEXT_STORAGE_KEY);
+  if (v) window.localStorage.removeItem(NEXT_STORAGE_KEY);
+  return v;
 }

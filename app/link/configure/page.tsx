@@ -3,23 +3,17 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Screen } from "@/components/ui/Screen";
-import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
+import { InputError } from "@/components/ui/InputError";
+import { PinInput } from "@/components/ui/PinInput";
+import {
+  AnimatedComponent,
+  slideInOut,
+} from "@/components/ui/AnimatedComponents";
 import { useSession } from "@/lib/auth";
 import { useLinkStore } from "@/lib/cardLinkStore";
 import { formatNgn } from "@/lib/utils";
 
-/**
- * Step 2 of 4 — Configure limits + PIN + funding.
- *
- * The user just claimed the card at /link?token=… (Act 1) and is
- * being walked through funding it. Defaults match the locked v1
- * thresholds from `tapp-card-spec.md`: per-tap ₦2k, step-up ₦15k,
- * daily ₦40k. USDC funding default = $25 (~₦40k at ~1600 NGN/USD).
- *
- * Submitting persists the choices in zustand and routes to /link/write
- * for the NFC tap.
- */
 export default function LinkConfigurePage() {
   return (
     <Suspense fallback={<Screen centered />}>
@@ -51,10 +45,12 @@ function Body() {
   const [pinConfirm, setPinConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect if missing context.
   useEffect(() => {
     if (!cardId) router.replace("/dashboard");
-    if (hydrated && !session) router.replace(`/sign-in?next=/link/configure?card=${cardId ?? ""}`);
+    if (hydrated && !session)
+      router.replace(
+        `/sign-in?next=/link/configure?card=${cardId ?? ""}`,
+      );
     if (cardId) setCardId(cardId);
   }, [cardId, hydrated, session, router, setCardId]);
 
@@ -71,9 +67,7 @@ function Body() {
       setError("Limits must satisfy: per-tap ≤ step-up ≤ daily.");
       return;
     }
-    // Convert NGN → kobo (subunit). USDC funding stored as cents for
-    // server-side display consistency; actual on-chain amount is
-    // computed at PTB build time.
+    setError(null);
     setLimits({
       daily:   daily * 100,
       perTap:  perTap * 100,
@@ -86,68 +80,71 @@ function Body() {
 
   return (
     <Screen>
-      <div className="space-y-8 pb-12">
-        <header className="space-y-2">
-          <Logo />
-          <h1 className="text-2xl font-semibold text-ink mt-4">
-            Set your limits
-          </h1>
-          <p className="text-sm text-muted-text">
-            Step 2 of 4 — set how much your card can spend.
+      <AnimatedComponent variant={slideInOut} className="grid gap-6 py-10 text-sm text-neutral-900 dark:text-white">
+        <div className="space-y-2">
+          <h1 className="text-xl font-medium">Set your limits</h1>
+          <p className="text-sm text-gray-500 dark:text-white/50">
+            Step 2 of 4 — choose how much your card can spend.
           </p>
-        </header>
+        </div>
 
-        <LimitField
-          label="Daily limit"
-          help="Max total spend per UTC day"
-          value={daily}
-          onChange={setDaily}
-          min={5_000}
-          max={200_000}
-          step={5_000}
-        />
-        <LimitField
-          label="Per-tap limit"
-          help="Taps below this need no PIN"
-          value={perTap}
-          onChange={setPerTap}
-          min={500}
-          max={5_000}
-          step={500}
-        />
-        <LimitField
-          label="Step-up threshold"
-          help="Above this needs a biometric on your phone"
-          value={stepUp}
-          onChange={setStepUp}
-          min={5_000}
-          max={50_000}
-          step={1_000}
-        />
+        <div className="grid divide-y divide-dashed divide-gray-200 rounded-3xl border border-gray-200 px-4 transition-all dark:divide-white/10 dark:border-white/10">
+          <RangeField
+            label="Daily limit"
+            help="Max total spend per UTC day"
+            value={daily}
+            onChange={setDaily}
+            min={5_000}
+            max={200_000}
+            step={5_000}
+            display={formatNgn(daily)}
+          />
+          <RangeField
+            label="Per-tap limit"
+            help="Taps below this need no PIN"
+            value={perTap}
+            onChange={setPerTap}
+            min={500}
+            max={5_000}
+            step={500}
+            display={formatNgn(perTap)}
+          />
+          <RangeField
+            label="Step-up threshold"
+            help="Above this needs a biometric on your phone"
+            value={stepUp}
+            onChange={setStepUp}
+            min={5_000}
+            max={50_000}
+            step={1_000}
+            display={formatNgn(stepUp)}
+          />
+          <RangeField
+            label="Fund with"
+            help="USDC to load now — you can top up later"
+            value={funding}
+            onChange={setFunding}
+            min={5}
+            max={200}
+            step={1}
+            display={`$${funding}`}
+          />
+        </div>
 
-        <USDCField
-          label="Fund with"
-          help="USDC to load onto the card now (can top up later)"
-          value={funding}
-          onChange={setFunding}
-        />
+        <div className="grid gap-4 rounded-3xl border border-gray-200 p-4 dark:border-white/10">
+          <PinInput label="Choose a 4-digit PIN" value={pin} onChange={setPin} />
+          <PinInput label="Confirm PIN" value={pinConfirm} onChange={setPinConfirm} />
+        </div>
 
-        <PinField label="Choose a 4-digit PIN" value={pin} onChange={setPin} />
-        <PinField label="Confirm PIN" value={pinConfirm} onChange={setPinConfirm} />
-
-        {error ? (
-          <p className="text-sm text-danger text-center" role="alert">
-            {error}
-          </p>
-        ) : null}
+        {error ? <InputError message={error} /> : null}
 
         <Button onClick={submit}>Continue — tap your card</Button>
-      </div>
+      </AnimatedComponent>
     </Screen>
   );
 }
 
-function LimitField({
+function RangeField({
   label,
   help,
   value,
@@ -155,6 +152,7 @@ function LimitField({
   min,
   max,
   step,
+  display,
 }: {
   label: string;
   help: string;
@@ -163,13 +161,16 @@ function LimitField({
   min: number;
   max: number;
   step: number;
+  display: string;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-baseline">
-        <label className="text-sm font-medium text-ink">{label}</label>
-        <span className="text-sm font-semibold text-ink tabular-nums">
-          {formatNgn(value)}
+    <div className="grid gap-2 py-4">
+      <div className="flex items-baseline justify-between">
+        <label className="text-sm font-medium text-neutral-900 dark:text-white">
+          {label}
+        </label>
+        <span className="rounded-full bg-gray-50 px-2 py-1 text-xs font-medium tabular-nums text-neutral-900 dark:bg-white/5 dark:text-white/80">
+          {display}
         </span>
       </div>
       <input
@@ -179,64 +180,9 @@ function LimitField({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-brand-green"
+        className="w-full accent-blue-600"
       />
-      <p className="text-xs text-muted-subtle">{help}</p>
-    </div>
-  );
-}
-
-function USDCField({
-  label,
-  help,
-  value,
-  onChange,
-}: {
-  label: string;
-  help: string;
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-baseline">
-        <label className="text-sm font-medium text-ink">{label}</label>
-        <span className="text-sm font-semibold text-ink tabular-nums">${value}</span>
-      </div>
-      <input
-        type="range"
-        min={5}
-        max={200}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-brand-green"
-      />
-      <p className="text-xs text-muted-subtle">{help}</p>
-    </div>
-  );
-}
-
-function PinField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (s: string) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-ink">{label}</label>
-      <input
-        type="password"
-        inputMode="numeric"
-        maxLength={4}
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
-        className="w-full h-14 rounded-xl border border-line-muted px-4 text-2xl tracking-[0.6em] text-center bg-surface focus:outline-none focus:border-brand-green"
-      />
+      <p className="text-xs text-gray-400 dark:text-white/40">{help}</p>
     </div>
   );
 }

@@ -1,0 +1,307 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  PiArrowLeftBold,
+  PiCheckCircleFill,
+  PiStorefrontFill,
+  PiFingerprintBold,
+} from "react-icons/pi";
+import { Screen } from "@/components/ui/Screen";
+import { Button } from "@/components/ui/Button";
+import { ReceiptCard } from "@/components/ui/ReceiptCard";
+import { InfoBanner } from "@/components/ui/InfoBanner";
+import { InputError } from "@/components/ui/InputError";
+import { CountdownPill } from "@/components/ui/CountdownPill";
+import {
+  AnimatedComponent,
+  slideInOut,
+} from "@/components/ui/AnimatedComponents";
+import { motion } from "framer-motion";
+import { useSession } from "@/lib/auth";
+import {
+  useOrder,
+  useWallet,
+  walletApi,
+  formatUsdc,
+  formatNgnFromUsdc,
+} from "@/lib/wallet";
+import { useHaptic } from "@/lib/motion";
+
+type Phase = "review" | "step-up" | "signing" | "submitting" | "done" | "expired" | "error";
+
+export default function OrderPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const { hydrated, session } = useSession();
+  const wallet = useWallet();
+  const order = useOrder(id);
+
+  const [phase, setPhase] = useState<Phase>("review");
+  const [error, setError] = useState<string | null>(null);
+  const haptic = useHaptic();
+
+  useEffect(() => {
+    if (hydrated && !session)
+      router.replace(`/sign-in?next=/order/${encodeURIComponent(id)}`);
+  }, [hydrated, session, router, id]);
+
+  async function confirm() {
+    if (!session || !order.data) return;
+    setError(null);
+    haptic.medium();
+
+    if (order.data.step_up_required && phase !== "step-up") {
+      setPhase("step-up");
+      return;
+    }
+
+    setPhase("signing");
+    try {
+      await new Promise((r) => setTimeout(r, 700)); // mock zkLogin sign latency
+      const txDigest = "0xtx_" + Date.now().toString(36);
+      setPhase("submitting");
+      await walletApi.confirmOrder(session.jwt, order.data.id, txDigest);
+      setPhase("done");
+      haptic.success();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Payment failed";
+      setError(msg);
+      setPhase("error");
+      haptic.error();
+    }
+  }
+
+  async function runStepUp() {
+    setError(null);
+    setPhase("signing");
+    try {
+      // Real impl: navigator.credentials.get(...) WebAuthn assertion.
+      await new Promise((r) => setTimeout(r, 600));
+      await confirm();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Biometric check failed";
+      setError(msg);
+      setPhase("error");
+    }
+  }
+
+  if (!hydrated || !session) return <Screen />;
+
+  if (order.isLoading) {
+    return (
+      <Screen centered>
+        <div className="flex flex-col items-center gap-4">
+          <div className="loader" />
+          <p className="text-sm text-gray-500 dark:text-white/50">
+            Loading order…
+          </p>
+        </div>
+      </Screen>
+    );
+  }
+
+  if (order.isError || !order.data) {
+    return (
+      <Screen centered>
+        <div className="flex flex-col items-center gap-6 text-center">
+          <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+            Order not found
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-white/50">
+            This order link is invalid or no longer active.
+          </p>
+          <Link href="/wallet" className="w-full">
+            <Button variant="secondary">Back to wallet</Button>
+          </Link>
+        </div>
+      </Screen>
+    );
+  }
+
+  const o = order.data;
+  const insufficient = !!wallet.data && wallet.data.usdc_subunit < o.amount_subunit;
+
+  if (phase === "done") {
+    return (
+      <Screen centered>
+        <AnimatedComponent
+          variant={slideInOut}
+          className="flex flex-col items-center gap-6 text-center"
+        >
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 220, damping: 18 }}
+            className="grid size-20 place-items-center rounded-full bg-green-50 text-3xl text-green-700 dark:bg-green-900/20 dark:text-green-500"
+          >
+            <PiCheckCircleFill />
+          </motion.div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+              Payment sent
+            </h1>
+            <motion.p
+              layoutId="order-amount"
+              className="font-medium tabular-nums text-neutral-900 dark:text-white"
+            >
+              <span className="text-2xl">{formatUsdc(o.amount_subunit)}</span>{" "}
+              <span className="text-sm text-gray-500 dark:text-white/50">USDC</span>
+            </motion.p>
+            <p className="text-sm text-gray-500 dark:text-white/50">
+              to {o.merchant_name} · ≈{" "}
+              {formatNgnFromUsdc(o.amount_subunit, o.ngn_rate)}
+            </p>
+          </div>
+          <div className="flex w-full gap-3">
+            <Link href="/wallet" className="flex-1">
+              <Button>Done</Button>
+            </Link>
+          </div>
+        </AnimatedComponent>
+      </Screen>
+    );
+  }
+
+  if (phase === "expired") {
+    return (
+      <Screen centered>
+        <div className="flex flex-col items-center gap-6 text-center">
+          <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+            Order expired
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-white/50">
+            Ask the merchant to generate a new one.
+          </p>
+          <Link href="/wallet" className="w-full">
+            <Button variant="secondary">Back to wallet</Button>
+          </Link>
+        </div>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen>
+      <AnimatedComponent
+        variant={slideInOut}
+        className="grid gap-6 py-10 text-sm text-neutral-900 dark:text-white"
+      >
+        <Link
+          href="/wallet"
+          className="inline-flex w-fit items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-neutral-900 dark:text-white/50 dark:hover:text-white"
+        >
+          <PiArrowLeftBold /> Cancel
+        </Link>
+
+        <div className="flex items-start justify-between gap-3">
+          <div className="grid gap-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-white/30">
+              You&apos;re paying
+            </p>
+            <p className="flex items-center gap-2 text-lg font-medium">
+              <PiStorefrontFill className="text-gray-400 dark:text-white/40" />
+              {o.merchant_name}
+            </p>
+          </div>
+          <CountdownPill
+            expiresAt={o.expires_at}
+            onExpire={() => setPhase("expired")}
+          />
+        </div>
+
+        <div className="grid gap-2 rounded-3xl border border-gray-200 p-5 text-center dark:border-white/10">
+          <motion.p
+            layoutId="order-amount"
+            className="font-medium tabular-nums text-neutral-900 dark:text-white"
+          >
+            <span className="text-4xl">{formatUsdc(o.amount_subunit)}</span>{" "}
+            <span className="text-lg text-gray-500 dark:text-white/50">USDC</span>
+          </motion.p>
+          <p className="text-sm text-gray-500 dark:text-white/50">
+            ≈ {formatNgnFromUsdc(o.amount_subunit, o.ngn_rate)}
+          </p>
+        </div>
+
+        <ReceiptCard
+          rows={[
+            { label: "Merchant",  value: o.merchant_name },
+            ...(o.reference ? [{ label: "Reference", value: <span className="font-mono text-xs">{o.reference}</span> }] : []),
+            { label: "Network",   value: "Sui" },
+            { label: "Token",     value: "USDC" },
+          ]}
+        />
+
+        {insufficient && (
+          <InfoBanner tone="warning">
+            <p className="font-medium text-neutral-900 dark:text-white">
+              Not enough USDC
+            </p>
+            <p className="mt-1 text-xs">
+              Your balance is{" "}
+              {wallet.data ? formatUsdc(wallet.data.usdc_subunit) : "0.00"} USDC.
+              Top up to pay this order.
+            </p>
+            <Link href="/deposit" className="mt-3 inline-block">
+              <Button
+                variant="secondary"
+                fullWidth={false}
+                className="px-3 py-1.5 text-xs"
+              >
+                Deposit
+              </Button>
+            </Link>
+          </InfoBanner>
+        )}
+
+        {o.step_up_required && (
+          <InfoBanner>
+            <p className="font-medium text-neutral-900 dark:text-white">
+              Biometric required
+            </p>
+            <p className="mt-1 text-xs">
+              This amount is above your card&apos;s step-up threshold.
+              You&apos;ll be asked for Face ID / Touch ID before signing.
+            </p>
+          </InfoBanner>
+        )}
+
+        {phase === "step-up" && (
+          <div className="flex flex-col items-center gap-4 rounded-3xl border border-gray-200 p-6 text-center dark:border-white/10">
+            <PiFingerprintBold className="text-4xl text-blue-600 dark:text-blue-500" />
+            <p className="text-sm font-medium">Confirm with your device</p>
+            <Button onClick={runStepUp} fullWidth={false} className="px-4">
+              Use Face ID / Touch ID
+            </Button>
+          </div>
+        )}
+
+        {(phase === "signing" || phase === "submitting") && (
+          <div className="flex flex-col items-center gap-3 py-2">
+            <div className="loader" />
+            <p className="text-xs text-gray-500 dark:text-white/50">
+              {phase === "signing" ? "Signing on Sui…" : "Confirming with merchant…"}
+            </p>
+          </div>
+        )}
+
+        {error ? <InputError message={error} /> : null}
+
+        {phase === "review" || phase === "error" ? (
+          <div className="flex gap-3">
+            <Link href="/wallet" className="flex-1">
+              <Button variant="secondary">Cancel</Button>
+            </Link>
+            <div className="flex-1">
+              <Button onClick={confirm} disabled={insufficient}>
+                Confirm &amp; pay
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </AnimatedComponent>
+    </Screen>
+  );
+}

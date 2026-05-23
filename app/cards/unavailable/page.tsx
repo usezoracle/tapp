@@ -1,16 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { AlertCircle } from "lucide-react";
+import { PiSealQuestionBold } from "react-icons/pi";
 import { Screen } from "@/components/ui/Screen";
-import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 
-/**
- * Status fallback for cards the redirect resolver decided weren't
- * usable (`revoked`, `locked`, or other states with no claim or
- * dashboard view). Rails redirects here with `?status=…` so the copy
- * matches what actually happened.
- */
 export default function CardsUnavailablePage({
   searchParams,
 }: {
@@ -32,12 +25,15 @@ async function Body({
   const copy = messageFor(status);
   return (
     <Screen centered>
-      <div className="flex flex-col items-center text-center gap-8">
-        <Logo />
-        <AlertCircle size={56} className="text-muted-subtle" strokeWidth={1.5} />
+      <div className="flex flex-col items-center gap-8 text-center">
+        <PiSealQuestionBold className="text-5xl text-gray-400 dark:text-white/40" />
         <div className="space-y-3">
-          <h1 className="text-2xl font-semibold text-ink">{copy.title}</h1>
-          <p className="text-muted-text">{copy.body}</p>
+          <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+            {copy.title}
+          </h1>
+          <p className="max-w-xs text-sm text-gray-500 dark:text-white/50">
+            {copy.body}
+          </p>
         </div>
         <Link href="/dashboard" className="w-full">
           <Button variant="secondary">Open dashboard</Button>

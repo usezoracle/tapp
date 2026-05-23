@@ -3,20 +3,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PiCheckCircleFill } from "react-icons/pi";
 import { Screen } from "@/components/ui/Screen";
-import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
+import { InputError } from "@/components/ui/InputError";
+import { StatusChip } from "@/components/ui/StatusChip";
+import {
+  AnimatedComponent,
+  slideInOut,
+} from "@/components/ui/AnimatedComponents";
 import { useSession } from "@/lib/auth";
 import { cardsApi, ApiError } from "@/lib/api";
 
-/**
- * Top-up: cardholder picks an amount, server returns the PTB
- * skeleton, PWA zkLogin-signs it (or stubs in demo mode).
- */
 export default function TopUpPage() {
   const router = useRouter();
   const { hydrated, session } = useSession();
-  const [amount, setAmount] = useState(25); // USDC
+  const [amount, setAmount] = useState(25);
   const [phase, setPhase] = useState<"ready" | "signing" | "done" | "error">("ready");
   const [error, setError] = useState<string | null>(null);
 
@@ -29,12 +31,7 @@ export default function TopUpPage() {
     setError(null);
     setPhase("signing");
     try {
-      // Cents → server expects an integer "subunit". For USDC 6-decimals
-      // the on-chain math happens at PTB build time; here we just send
-      // the amount in cents (10^-2) for display + record-keeping.
       const skeleton = await cardsApi.topUp(Math.round(amount * 100), session.jwt);
-      // Demo mode: skip the actual sign. Real path TODO:
-      // dynamically import @/lib/zklogin, build tx from skeleton, sign + submit.
       console.info("Top-up PTB skeleton (sign + submit):", skeleton);
       setPhase("done");
     } catch (err) {
@@ -49,51 +46,68 @@ export default function TopUpPage() {
     }
   }
 
+  if (phase === "done") {
+    return (
+      <Screen centered>
+        <div className="flex flex-col items-center gap-6 text-center">
+          <StatusChip tone="success" icon={<PiCheckCircleFill />}>
+            Top-up signed
+          </StatusChip>
+          <p className="max-w-xs text-sm text-gray-500 dark:text-white/50">
+            Your balance will update once the transaction confirms on Sui.
+          </p>
+          <Link href="/dashboard" className="w-full">
+            <Button>Back to dashboard</Button>
+          </Link>
+        </div>
+      </Screen>
+    );
+  }
+
   return (
-    <Screen centered>
-      <div className="flex flex-col items-center text-center gap-8 w-full">
-        <Logo />
-        {phase === "done" ? (
-          <>
-            <div className="w-24 h-24 rounded-full bg-success-bg flex items-center justify-center">
-              <span className="text-4xl">✓</span>
-            </div>
-            <p className="text-ink">Top-up signed. Your balance will update once the tx confirms.</p>
-            <Link href="/dashboard">
-              <Button>Back to dashboard</Button>
-            </Link>
-          </>
-        ) : (
-          <>
-            <h1 className="text-2xl font-semibold text-ink">Top up your card</h1>
-            <div className="space-y-2 w-full">
-              <div className="flex justify-between items-baseline">
-                <label className="text-sm font-medium text-ink">Amount</label>
-                <span className="text-sm font-semibold text-ink tabular-nums">${amount}</span>
-              </div>
-              <input
-                type="range"
-                min={5}
-                max={500}
-                step={5}
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full accent-brand-green"
-              />
-              <p className="text-xs text-muted-subtle">
-                USDC added to your on-chain spending cap. Sign with Google to confirm.
-              </p>
-            </div>
-            {error ? <p className="text-sm text-danger">{error}</p> : null}
+    <Screen>
+      <AnimatedComponent variant={slideInOut} className="grid gap-6 py-10 text-sm text-neutral-900 dark:text-white">
+        <div className="space-y-2">
+          <h1 className="text-xl font-medium">Top up your card</h1>
+          <p className="text-sm text-gray-500 dark:text-white/50">
+            Add USDC to your on-chain spending cap.
+          </p>
+        </div>
+
+        <div className="grid gap-2 rounded-3xl border border-gray-200 p-4 transition-all dark:border-white/10">
+          <div className="flex items-baseline justify-between">
+            <label className="text-sm font-medium">Amount</label>
+            <span className="rounded-full bg-gray-50 px-2 py-1 text-xs font-medium tabular-nums dark:bg-white/5">
+              ${amount}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={5}
+            max={500}
+            step={5}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            className="w-full accent-blue-600"
+          />
+          <p className="text-xs text-gray-400 dark:text-white/40">
+            Sign with Google to confirm.
+          </p>
+        </div>
+
+        {error ? <InputError message={error} /> : null}
+
+        <div className="flex gap-3">
+          <Link href="/dashboard" className="flex-1">
+            <Button variant="secondary">Cancel</Button>
+          </Link>
+          <div className="flex-1">
             <Button onClick={go} loading={phase === "signing"}>
               Sign &amp; top up
             </Button>
-            <Link href="/dashboard" className="text-sm text-muted-text">
-              Cancel
-            </Link>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      </AnimatedComponent>
     </Screen>
   );
 }

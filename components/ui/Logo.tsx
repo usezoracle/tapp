@@ -1,23 +1,20 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Wordmark for the Tapp PWA — text-based, no brand logo SVG (kept
- * intentional per user direction: icons-only from svg-list, not the
- * wordmark logo).
+ * Wordmark — "Zoracle" with a tiny royal-blue dot, mirroring zap's
+ * "Zap" + Paycrest mini-logo treatment. Minimal on purpose; brand
+ * marks can land later without touching consumers.
  */
 export function Logo({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 text-ink-true font-semibold tracking-[0.16em]",
+        "inline-flex items-center gap-2 text-lg font-semibold text-neutral-900 dark:text-white",
         className,
       )}
     >
-      <span
-        aria-hidden
-        className="inline-block w-2.5 h-2.5 rounded-full bg-brand-green"
-      />
-      ZORACLE
+      <span aria-hidden className="size-2 rounded-full bg-blue-600" />
+      Zoracle
     </span>
   );
 }

@@ -41,7 +41,9 @@ async function request<T>(
   path: string,
   { body, token, signal }: RequestOptions = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers["Authorization"] = `Bearer ${token}`;
 

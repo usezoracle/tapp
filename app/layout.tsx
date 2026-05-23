@@ -1,8 +1,24 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/query-provider";
 import { GoogleProvider } from "@/lib/google-provider";
+import { SessionProvider } from "@/lib/auth";
 import { ServiceWorkerRegistrar } from "./register-sw";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { Navbar } from "@/components/Navbar";
+import { BottomNav } from "@/components/BottomNav";
+
+// Zap-style components
+import { Preloader } from "@/components/ui/Preloader";
+import { LogoOutlineBg } from "@/components/ui/LogoOutlineBg";
+import { Disclaimer } from "@/components/ui/Disclaimer";
+import { CookieConsent } from "@/components/ui/CookieConsent";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "Zoracle",
@@ -23,37 +39,47 @@ export const viewport: Viewport = {
   themeColor: "#FFFFFF",
   width: "device-width",
   initialScale: 1,
-  // Disable user-scaling on a transactional surface so accidental
-  // pinch-zooms don't leave the customer staring at a half-zoomed PIN
-  // pad mid-tap. We keep regular text accessible via the OS-wide
-  // text-size setting — this only prevents in-page zoom gestures.
+  // Transactional surface — accidental pinch-zooms on a PIN pad =
+  // bad UX. Use the OS-level text-size setting for accessibility.
   maximumScale: 1,
   userScalable: false,
 };
 
+/**
+ * Root layout — mirrors paycrest/zap's shape: fixed navbar at top,
+ * mobile-first centered column for content, footer at the bottom,
+ * dark mode driven by `next-themes`. Each page renders into the
+ * `<main>` slot inside `max-w-mobile`.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <head>
-        {/*
-          Clash Grotesk via Fontshare (Indian Type Foundry). Not on
-          Google Fonts so we can't use `next/font/google`. Preconnect +
-          stylesheet keeps the FOUT short.
-        */}
-        <link rel="preconnect" href="https://api.fontshare.com" />
-        <link
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f[]=clash-grotesk@300,400,500,600,700&display=swap"
-        />
-      </head>
-      <body className="min-h-full flex flex-col bg-surface text-ink">
-        <GoogleProvider>
-          <QueryProvider>{children}</QueryProvider>
-        </GoogleProvider>
+    <html
+      lang="en"
+      className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-full bg-white text-neutral-900 transition-colors dark:bg-neutral-900 dark:text-white">
+        <ThemeProvider>
+          <GoogleProvider>
+            <SessionProvider>
+              <QueryProvider>
+                <Preloader />
+                <Navbar />
+                <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-mobile flex-col px-4 pt-28 pb-24">
+                  <main className="w-full flex-grow">{children}</main>
+                </div>
+                <BottomNav />
+                <LogoOutlineBg />
+                <Disclaimer />
+                <CookieConsent />
+              </QueryProvider>
+            </SessionProvider>
+          </GoogleProvider>
+        </ThemeProvider>
         <ServiceWorkerRegistrar />
       </body>
     </html>

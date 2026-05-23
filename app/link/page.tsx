@@ -2,27 +2,19 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
+import { PiShieldCheckFill } from "react-icons/pi";
 import { Screen } from "@/components/ui/Screen";
-import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { IconContactlessCard, IconSuccessBadge } from "@/lib/icons";
+import { IconSuccessBadge, IconGoogle } from "@/lib/icons";
 import { useSession } from "@/lib/auth";
 import { cardsApi, ApiError } from "@/lib/api";
+import {
+  AnimatedComponent,
+  fadeInOut,
+  slideInOut,
+} from "@/components/ui/AnimatedComponents";
 
-/**
- * Claim a freshly-tapped card. The activation URL pasted on the card
- * (`https://api.zoracle.com/c/<token>`) redirects through Rails to
- * `/link?token=<token>` — this page picks up from there.
- *
- * Behaviour:
- *   - No `token` query param → "Tap a card to get started" empty state.
- *   - `token` present + signed out → render sign-in CTA with `next=`
- *     pointing back to this URL.
- *   - `token` present + signed in → call `POST /v1/cards/link/claim`
- *     and route to `/dashboard/cards/:id`.
- */
 export default function LinkPage() {
   return (
     <Suspense fallback={<Screen centered><div /></Screen>}>
@@ -40,7 +32,6 @@ function LinkPageBody() {
   if (!token) return <NoTokenState />;
   if (!hydrated) return <LoadingState />;
   if (!session) return <SignInState token={token} />;
-  // After claim → configure step (Act 2 of the linking flow).
   return (
     <ClaimingState
       token={token}
@@ -50,20 +41,20 @@ function LinkPageBody() {
   );
 }
 
-// -----------------------------------------------------------------------------
-
 function NoTokenState() {
   return (
     <Screen centered>
       <div className="flex flex-col items-center gap-8 text-center">
-        <Logo />
-        <Icon xml={IconContactlessCard} width={56} height={78} className="opacity-50" />
-        <div className="space-y-3">
-          <h1 className="text-2xl font-semibold text-ink">No card detected</h1>
-          <p className="text-muted-text">
-            Tap a Zoracle card on the back of your phone to get started.
-          </p>
-        </div>
+        <AnimatedComponent variant={slideInOut}>
+          <div className="space-y-3">
+            <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+              No card detected
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-white/50">
+              Tap a Zoracle card on the back of your phone to get started.
+            </p>
+          </div>
+        </AnimatedComponent>
       </div>
     </Screen>
   );
@@ -72,12 +63,7 @@ function NoTokenState() {
 function LoadingState() {
   return (
     <Screen centered>
-      <div className="flex justify-center">
-        <div
-          aria-hidden
-          className="w-8 h-8 rounded-full border-2 border-line-muted border-t-brand-green animate-spin"
-        />
-      </div>
+      <div className="loader" />
     </Screen>
   );
 }
@@ -87,24 +73,25 @@ function SignInState({ token }: { token: string }) {
   return (
     <Screen centered>
       <div className="flex flex-col items-center gap-8 text-center">
-        <Logo />
-        <div className="w-20 h-20 rounded-full bg-brand-green/15 flex items-center justify-center">
-          <Icon xml={IconContactlessCard} width={36} height={50} />
-        </div>
         <div className="space-y-3">
-          <h1 className="text-2xl font-semibold text-ink">
+          <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
             You tapped a new card
           </h1>
-          <p className="text-muted-text">
+          <p className="text-sm text-gray-500 dark:text-white/50">
             Sign in with Google to claim it as yours.
           </p>
         </div>
-        <a href={`/sign-in?next=${encodeURIComponent(nextHref)}`} className="w-full">
-          <Button>Continue with Google</Button>
+        <a
+          href={`/sign-in?next=${encodeURIComponent(nextHref)}`}
+          className="w-full"
+        >
+          <Button leadingIcon={<Icon xml={IconGoogle} size={18} />}>
+            Continue with Google
+          </Button>
         </a>
-        <p className="text-xs text-muted-subtle inline-flex items-center gap-1">
-          <ShieldCheck size={14} />
-          This link only works once. No one else can claim it after you.
+        <p className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-white/50">
+          <PiShieldCheckFill className="text-blue-500" />
+          This link works once. No one else can claim it after you.
         </p>
       </div>
     </Screen>
@@ -120,7 +107,9 @@ function ClaimingState({
   jwt: string;
   onDone: (cardId: string) => void;
 }) {
-  const [status, setStatus] = useState<"claiming" | "error" | "already-yours">("claiming");
+  const [status, setStatus] = useState<"claiming" | "error" | "already-yours">(
+    "claiming",
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -150,11 +139,10 @@ function ClaimingState({
     return (
       <Screen centered>
         <div className="flex flex-col items-center gap-6 text-center">
-          <div
-            aria-hidden
-            className="w-10 h-10 rounded-full border-2 border-line-muted border-t-brand-green animate-spin"
-          />
-          <p className="text-muted-text">Claiming your card…</p>
+          <div className="loader" />
+          <p className="text-sm text-gray-500 dark:text-white/50">
+            Claiming your card…
+          </p>
         </div>
       </Screen>
     );
@@ -165,7 +153,9 @@ function ClaimingState({
       <Screen centered>
         <div className="flex flex-col items-center gap-6 text-center">
           <Icon xml={IconSuccessBadge} size={84} />
-          <p className="text-ink">This card is already linked to your account.</p>
+          <p className="text-sm text-neutral-900 dark:text-white">
+            This card is already linked to your account.
+          </p>
           <a href="/dashboard" className="w-full">
             <Button variant="secondary">Open dashboard</Button>
           </a>
@@ -177,8 +167,10 @@ function ClaimingState({
   return (
     <Screen centered>
       <div className="flex flex-col items-center gap-6 text-center">
-        <h1 className="text-xl font-semibold text-danger">Couldn&apos;t claim this card</h1>
-        <p className="text-muted-text">{error}</p>
+        <h1 className="text-xl font-medium text-neutral-900 dark:text-white">
+          Couldn&apos;t claim this card
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-white/50">{error}</p>
         <a href="/dashboard" className="w-full">
           <Button variant="secondary">Open dashboard</Button>
         </a>

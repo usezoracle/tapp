@@ -9,21 +9,21 @@ interface ScreenProps {
 }
 
 /**
- * Page-level container. Caps width on tablets/desktop so the PWA
- * doesn't stretch awkwardly when "Add to Home Screen" sits next to a
- * larger Chrome window.
+ * Per-page content shell. The mobile container + padding live on the
+ * root layout (see app/layout.tsx), so this is just the column inside.
+ * Use `centered` when the page is a single hero (sign-in, single-step
+ * prompts).
  */
 export function Screen({ children, className, centered = false }: ScreenProps) {
   return (
-    <main
+    <div
       className={cn(
-        "flex-1 flex flex-col w-full mx-auto",
-        "max-w-md px-5 py-6 sm:py-10",
-        centered && "justify-center",
+        "w-full flex flex-col gap-6",
+        centered && "min-h-[70vh] justify-center",
         className,
       )}
     >
       {children}
-    </main>
+    </div>
   );
 }

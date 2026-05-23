@@ -1,8 +1,14 @@
 "use client";
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { PiSpinnerBold } from "react-icons/pi";
 import { cn } from "@/lib/utils";
+import {
+  dangerBtnClasses,
+  ghostBtnClasses,
+  primaryBtnClasses,
+  secondaryBtnClasses,
+} from "./Styles";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -11,21 +17,20 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
   leadingIcon?: ReactNode;
   trailingIcon?: ReactNode;
+  /** Full-width by default — matches zap's mobile-first button blocks. */
   fullWidth?: boolean;
 }
 
-const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-brand-green text-ink-true hover:opacity-90 active:opacity-80",
-  secondary:
-    "bg-surface text-ink border border-line-muted hover:bg-surface-subtle active:bg-surface-muted",
-  ghost: "bg-transparent text-ink hover:bg-surface-subtle",
-  danger: "bg-danger text-surface hover:opacity-90 active:opacity-80",
+const variantClassMap: Record<ButtonVariant, string> = {
+  primary: primaryBtnClasses,
+  secondary: secondaryBtnClasses,
+  ghost: ghostBtnClasses,
+  danger: dangerBtnClasses,
 };
 
 /**
- * Brand CTA. 59px tall, pill radius, brand-green primary with
- * near-black labels — matches the tapp-merchant + users-app language
- * (single source of truth for the look across all three apps).
+ * CTA primitive. Class strings live in `Styles.ts` so the visual
+ * language stays in one place — same pattern paycrest/zap uses.
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
@@ -47,16 +52,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       disabled={isDisabled}
       className={cn(
-        "h-[59px] rounded-pill px-6 flex items-center justify-center gap-2 text-base font-medium",
-        "transition-opacity disabled:opacity-50 disabled:cursor-not-allowed",
-        variantClasses[variant],
+        variantClassMap[variant],
+        "flex items-center justify-center gap-2",
         fullWidth && "w-full",
         className,
       )}
       {...rest}
     >
       {loading ? (
-        <Loader2 className="animate-spin" size={20} strokeWidth={2.4} />
+        <PiSpinnerBold className="animate-spin" size={18} />
       ) : (
         <>
           {leadingIcon}
