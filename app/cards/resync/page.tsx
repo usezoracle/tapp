@@ -78,7 +78,7 @@ export default function ResyncPage() {
           <p className="max-w-xs text-sm text-gray-500 dark:text-white/50">
             Try tapping at a merchant again.
           </p>
-          <Link href="/dashboard" className="w-full">
+          <Link href="/settings/card" className="w-full">
             <Button>Done</Button>
           </Link>
         </div>
@@ -109,7 +109,7 @@ export default function ResyncPage() {
           Start resync
         </Button>
         <Link
-          href="/dashboard"
+          href="/settings/card"
           className="text-sm text-gray-500 hover:text-neutral-900 dark:text-white/50 dark:hover:text-white"
         >
           Cancel

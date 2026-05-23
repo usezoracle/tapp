@@ -7,7 +7,7 @@ import {
   PiWalletFill,
   PiClockCounterClockwiseBold,
   PiQrCodeBold,
-  PiArrowDownLeftBold,
+  PiCreditCardBold,
   PiGearSixBold,
 } from "react-icons/pi";
 import type { IconType } from "react-icons";
@@ -24,11 +24,11 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { href: "/wallet",   label: "Wallet",   icon: PiWalletFill,                match: (p) => p === "/wallet" },
-  { href: "/history",  label: "Activity", icon: PiClockCounterClockwiseBold, match: (p) => p === "/history" || p.startsWith("/tx/") },
-  { href: "/pay",      label: "Pay",      icon: PiQrCodeBold,                match: (p) => p === "/pay" || p.startsWith("/order/"), prominent: true },
-  { href: "/deposit",  label: "Receive",  icon: PiArrowDownLeftBold,         match: (p) => p === "/deposit" },
-  { href: "/settings", label: "Settings", icon: PiGearSixBold,               match: (p) => p === "/settings" || p.startsWith("/settings/") },
+  { href: "/wallet",        label: "Wallet",   icon: PiWalletFill,                match: (p) => p === "/wallet" },
+  { href: "/history",       label: "Activity", icon: PiClockCounterClockwiseBold, match: (p) => p === "/history" || p.startsWith("/tx/") },
+  { href: "/pay",           label: "Pay",      icon: PiQrCodeBold,                match: (p) => p === "/pay" || p.startsWith("/order/"), prominent: true },
+  { href: "/settings/card", label: "Card",     icon: PiCreditCardBold,            match: (p) => p === "/settings/card" || p.startsWith("/settings/limits") },
+  { href: "/settings",      label: "Settings", icon: PiGearSixBold,               match: (p) => (p === "/settings" || p.startsWith("/settings/")) && !p.startsWith("/settings/card") && !p.startsWith("/settings/limits") },
 ];
 
 export function shouldShowBottomNav(pathname: string): boolean {
@@ -50,7 +50,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur transition-colors dark:border-white/10 dark:bg-neutral-900/95"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-transparent transition-colors dark:border-white/10"
     >
       <ul className="mx-auto flex w-full max-w-mobile items-end justify-between px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
         {TABS.map((tab) =>

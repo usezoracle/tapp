@@ -55,8 +55,8 @@ export default function RevokePage() {
           <p className="max-w-xs text-sm text-gray-500 dark:text-white/50">
             No more taps will be charged.
           </p>
-          <Link href="/dashboard" className="w-full">
-            <Button>Back to dashboard</Button>
+          <Link href="/settings/card" className="w-full">
+            <Button>Back to settings</Button>
           </Link>
         </div>
       </Screen>
@@ -84,7 +84,7 @@ export default function RevokePage() {
           Revoke
         </Button>
         <Link
-          href="/dashboard"
+          href="/settings/card"
           className="text-sm text-gray-500 hover:text-neutral-900 dark:text-white/50 dark:hover:text-white"
         >
           Keep card active

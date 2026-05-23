@@ -167,4 +167,30 @@ export const cardsApi = {
       "/v1/cards/me/resync/complete",
       { body: { resync_nonce }, token: jwt },
     ),
+
+  /** Parse a step-up token to display merchant & payment details. */
+  stepUpParse: (token: string, jwt: string) =>
+    request<StepUpDetails>("POST", "/v1/cards/me/step-up/parse", {
+      body: { token },
+      token: jwt,
+    }),
+
+  /** Grant a step-up token using a WebAuthn biometric assertion. */
+  stepUpGrant: (token: string, webauthnAssertion: any, jwt: string) =>
+    request<StepUpGrantResponse>("POST", "/v1/cards/me/step-up/grant", {
+      body: { token, webauthn_assertion: webauthnAssertion },
+      token: jwt,
+    }),
 };
+
+export interface StepUpDetails {
+  amount: string;
+  currency: string;
+  expires_at: string;
+  card_id: string;
+  merchant_name: string;
+}
+
+export interface StepUpGrantResponse {
+  acknowledged: boolean;
+}

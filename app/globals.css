@@ -151,3 +151,32 @@ select {
 .animate-aurora-2 {
   animation: aurora-2 20s ease-in-out infinite;
 }
+
+/* Custom Liquid ink reveal transition using View Transitions API + SVG Filter */
+html.theme-transitioning {
+  view-transition-name: root;
+}
+
+html.theme-transitioning::view-transition-old(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
+html.theme-transitioning::view-transition-new(root) {
+  animation: liquid-dummy 5s linear !important;
+  mix-blend-mode: normal !important;
+  mask: url(#liquid-mask) !important;
+  -webkit-mask: url(#liquid-mask) !important;
+}
+
+@keyframes liquid-dummy {
+  from { opacity: 0.99; }
+  to { opacity: 1; }
+}
+
+/* Temporarily disable transitions during theme snapshot capture to prevent fade/jank */
+html.no-transitions * {
+  transition: none !important;
+}
+
+

@@ -56,8 +56,8 @@ export default function TopUpPage() {
           <p className="max-w-xs text-sm text-gray-500 dark:text-white/50">
             Your balance will update once the transaction confirms on Sui.
           </p>
-          <Link href="/dashboard" className="w-full">
-            <Button>Back to dashboard</Button>
+          <Link href="/settings/card" className="w-full">
+            <Button>Back to settings</Button>
           </Link>
         </div>
       </Screen>
@@ -98,7 +98,7 @@ export default function TopUpPage() {
         {error ? <InputError message={error} /> : null}
 
         <div className="flex gap-3">
-          <Link href="/dashboard" className="flex-1">
+          <Link href="/settings/card" className="flex-1">
             <Button variant="secondary">Cancel</Button>
           </Link>
           <div className="flex-1">

@@ -39,7 +39,7 @@ function Body() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!cardId) router.replace("/dashboard");
+    if (!cardId) router.replace("/wallet");
     if (hydrated && !session) {
       router.replace(`/sign-in?next=/link/sign?card=${cardId ?? ""}`);
     }
@@ -126,7 +126,7 @@ function Body() {
 
       link.reset();
       setPhase("done");
-      router.replace(`/dashboard/cards/${cardId}`);
+      router.replace("/settings/card");
     } catch (err) {
       const msg =
         err instanceof ApiError

@@ -51,7 +51,7 @@ function Body() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!cardId || !pin) router.replace("/dashboard");
+    if (!cardId || !pin) router.replace("/wallet");
   }, [cardId, pin, router]);
 
   async function startWrite() {

@@ -1,8 +1,8 @@
 {
-  "name": "Zoracle",
-  "short_name": "Zoracle",
+  "name": "Tapp",
+  "short_name": "Tapp",
   "description": "Tap, pay, done.",
-  "start_url": "/dashboard",
+  "start_url": "/wallet",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
