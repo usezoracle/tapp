@@ -99,7 +99,7 @@ export default function SettingsPage() {
           </p>
           <p className="text-xs text-gray-500 dark:text-white/50">
             {wallet.data ? shortenAddress(wallet.data.sui_address) : ""} ·
-            Sui Testnet
+            {process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui Mainnet" : "Sui Testnet"}
           </p>
         </div>
 
