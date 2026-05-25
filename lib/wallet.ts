@@ -356,10 +356,17 @@ export const walletApi = {
   ): Promise<WalletState> => {
     if (WALLET_MOCK) return mockWalletState(seed, suiAddress);
     if (suiAddress) return onchainWalletState(suiAddress);
-    // Backend may not yet emit sui_usdc_rate (newer field) — default
-    // to the mock so the headline math still works during rollout.
+    // Backend may not yet emit the rate fields — fall back to the
+    // live /api/rates source if either is missing, so the wallet
+    // hero math always has something to chew on.
     const w = await realGet<WalletState>("/v1/wallet/me", jwt);
-    return { ...w, sui_usdc_rate: w.sui_usdc_rate ?? MOCK_SUI_USDC_RATE };
+    if (w.ngn_rate != null && w.sui_usdc_rate != null) return w;
+    const rates = await safeFetchLiveRates();
+    return {
+      ...w,
+      ngn_rate: w.ngn_rate ?? rates.ngn_per_usdc,
+      sui_usdc_rate: w.sui_usdc_rate ?? rates.usdc_per_sui,
+    };
   },
   history: async (
     jwt: string,
@@ -385,7 +392,7 @@ export const walletApi = {
     return realGet<ActivityEvent>(`/v1/wallet/tx/${digest}`, jwt);
   },
   order: async (jwt: string, id: string): Promise<OrderDetails> => {
-    if (WALLET_MOCK) return mockOrder(id);
+    if (WALLET_MOCK) return await mockOrder(id);
     return realGet<OrderDetails>(`/v1/orders/${id}`, jwt);
   },
   /**
