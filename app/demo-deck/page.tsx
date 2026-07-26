@@ -66,54 +66,134 @@ const BankIcon = ({ className }: { className?: string }) => (
 
 const slides = [
   {
+    key: "opening",
     kicker: "0:00",
     title: "Major chains in. Local currency out.",
     note: "Open with the uncomfortable truth: crypto moves everywhere except the checkout counter.",
   },
   {
+    key: "problem",
     kicker: "Problem",
     title: "Fragmented twice.",
     note: "Trillions of dollars sit on 50+ blockchains, yet almost none can be spent in the real world. Existing fiat rails are clunky, fragmented, and region-locked. Money remains scattered across chains and cut off from everyday life.",
   },
   {
+    key: "solution",
     kicker: "Solution",
-    title: "Rails settles. Tapp spends.",
-    note: "We fix both: Rails connects any blockchain directly to local currency, and Tapp lets users tap-to-pay instantly. Merchants are paid in local fiat without touching crypto—abstracting all Web3 complexity down to spending.",
+    title: "Rails settles. Tapp spends. Anyone funds.",
+    note: "Rails connects any blockchain directly to local currency, Tapp lets users tap-to-pay instantly, and Open Liquidity lets anyone fund the corridors that settle it—escrowed and fully automated, even refunds. Merchants are paid in local fiat without touching crypto.",
   },
   {
+    key: "network",
+    kicker: "The Network",
+    title: "We issue the card. We own the acceptance.",
+    note: "No scheme in the loop, no terminal to buy, and every tap is a fresh code. We control issuance and acceptance end to end.",
+  },
+  {
+    key: "demo",
     kicker: "Demo",
     title: "Product Usage.",
     note: "Live product usage demo: user taps, Rails settles, merchant sees paid.",
   },
   {
+    key: "sui",
     kicker: "Why Sui",
     title: "Sui is the payments home base.",
     note: "Live on Sui, major EVMs, and Starknet, but Sui is home. The tech is a step up—fast, cheap, and built for volume—and Overflow is our launchpad to scale.",
   },
   {
+    key: "traction",
     kicker: "Traction",
     title: "Live in production today.",
     note: "Not a prototype. Merchants are onboarded and businesses are integrating Rails.",
   },
   {
+    key: "testimonials",
     kicker: "Testimonials",
     title: "Real-world feedback.",
     note: "Early merchant offramp speed validation, consumer tap payment clips, and integration proof.",
   },
   {
+    key: "roadmap",
+    kicker: "Roadmap",
+    title: "The next four quarters.",
+    note: "Get Tapp into more hands, take in any asset, open liquidity to anyone, then widen the corridor map.",
+  },
+  {
+    key: "team",
     kicker: "Team",
     title: "The team built for this.",
     note: "Ex-Coinbase, ex-Base, Zerocard core team, hardware engineers, and Sui devs who built Zoracle ($1.5M+ volume) and dev tools.",
   },
   {
+    key: "revenue",
     kicker: "Revenue",
     title: "We earn when real value moves.",
     note: "Close by handing off to the live merchant-phone demo.",
   },
   {
+    key: "thanks",
     kicker: "Thank You",
     title: "Tap into the future.",
     note: "Thank you! Scan to test the Tapp PWA, or reach out to labs@zoracle.xyz.",
+  },
+];
+
+const networkPoints = [
+  {
+    title: "No scheme issuance",
+    copy: "No Visa or Mastercard in the loop. We are not renting acceptance. We are building it.",
+  },
+  {
+    title: "No terminal to buy",
+    copy: "Merchants accept on the phone they already carry, by tap or QR.",
+  },
+  {
+    title: "Cannot be copied",
+    copy: "Every tap makes a fresh code, so a captured tap is worthless.",
+  },
+  {
+    title: "Why that matters",
+    copy: "Sub-cent fees, instant settlement, and rules we set ourselves.",
+  },
+];
+
+const roadmap = [
+  {
+    quarter: "Q3 2026",
+    current: true,
+    title: "Get it in more hands",
+    build: ["Launch on iOS and Android", "Pay with any Sui asset"],
+    grow: [
+      "Sign up merchants in one Lagos area",
+      "More teams building on Rails",
+      "Ecosystem co-marketing",
+      "Secure ecosystem grant",
+      "Grow social media presence",
+    ],
+  },
+  {
+    quarter: "Q4 2026",
+    title: "Take in any asset",
+    build: ["Deposit any asset on Sui", "Issue Tapp cards by API"],
+    grow: [
+      "Ship the SDK",
+      "Sponsor a Sui hackathon",
+      "Micro-influencer campaign",
+      "Grassroots merchant campaign",
+    ],
+  },
+  {
+    quarter: "Q1 2027",
+    title: "Liquidity goes live",
+    build: ["Open liquidity in the API", "First providers live in Nigeria"],
+    grow: ["Recruit liquidity providers", "Merchant stories with real numbers"],
+  },
+  {
+    quarter: "Q2 2027",
+    title: "Widen the map",
+    build: ["Corridors beyond the six", "Publish payout speed per corridor"],
+    grow: ["Second merchant city", "Resellers who sell Rails as theirs"],
   },
 ];
 
@@ -152,25 +232,29 @@ export default function DemoDeckPage() {
   }, []);
 
   const content = useMemo(() => {
-    switch (index) {
-      case 0:
+    switch (slides[index].key) {
+      case "opening":
         return <OpeningMosaic />;
-      case 1:
+      case "problem":
         return <ProblemSlide />;
-      case 2:
+      case "solution":
         return <SolutionSlide />;
-      case 3:
+      case "network":
+        return <NetworkSlide />;
+      case "demo":
         return <ProductDemoSlide />;
-      case 4:
+      case "sui":
         return <SuiSlide />;
-      case 5:
+      case "traction":
         return <TractionSlide />;
-      case 6:
+      case "testimonials":
         return <TestimonialSlide />;
-      case 7:
+      case "team":
         return <TeamSlide />;
-      case 8:
+      case "revenue":
         return <CloseSlide />;
+      case "roadmap":
+        return <RoadmapSlide />;
       default:
         return <ThankYouMosaic />;
     }
@@ -576,7 +660,7 @@ function SolutionSlide() {
           One settlement layer between every chain and every store.
         </h1>
       </div>
-      <div className="grid md:grid-cols-2 gap-4 mt-6 flex-1 min-h-0 items-stretch">
+      <div className="grid md:grid-cols-3 gap-4 mt-6 flex-1 min-h-0 items-stretch">
         <motion.div 
           className="flex flex-col justify-between rounded-3xl bg-white/70 p-6 border border-black/[0.06]"
           whileHover={{ y: -4 }}
@@ -615,6 +699,32 @@ function SolutionSlide() {
             <h2 className="text-3xl font-black uppercase tracking-wide">Tapp</h2>
             <p className="mt-2 text-base font-bold text-white/70 leading-snug">
               An instant, contactless card built on top of Rails that abstracts all Web3 complexity down to a simple, physical tap.
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="flex flex-col justify-between rounded-3xl bg-[#c8ff45] text-[#111] p-6 border border-black/10"
+          whileHover={{ y: -4 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <div className="flex justify-between items-start">
+            <div className="grid size-14 place-items-center rounded-2xl bg-black text-[#c8ff45]">
+              <PiCoinsBold className="size-7" />
+            </div>
+            <div className="flex flex-col items-end gap-1.5">
+              <span className="rounded-full bg-black px-3 py-1 text-xs font-black uppercase tracking-wider text-[#c8ff45]">
+                Permissionless
+              </span>
+              <span className="rounded-full bg-[#f0ede5] px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-[#111]">
+                Coming soon
+              </span>
+            </div>
+          </div>
+          <div className="mt-8">
+            <h2 className="text-3xl font-black uppercase tracking-wide">Open Liquidity</h2>
+            <p className="mt-2 text-base font-bold text-black/60 leading-snug">
+              Anyone, anywhere can run a liquidity node and fund a corridor. Rails settles through your escrowed liquidity. No human intervention, even refunds are automatic.
             </p>
           </div>
         </motion.div>
@@ -1054,6 +1164,123 @@ function TeamSlide() {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function NetworkSlide() {
+  return (
+    <div className="relative flex flex-col h-[63vh] w-full max-w-7xl rounded-[2rem] bg-[#f0ede5] p-6 text-[#111] md:p-8 overflow-hidden select-none">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6b6b2f]">
+          the network
+        </p>
+        <h1 className="mt-2 text-[clamp(1.9rem,3.9vw,3.9rem)] font-black uppercase leading-[0.9]">
+          We issue the card and we own the acceptance
+          <span className="text-[#c8ff45]">.</span>
+        </h1>
+      </div>
+
+      <div className="mt-6 grid flex-1 min-h-0 items-stretch gap-4 lg:grid-cols-[0.82fr_1.18fr]">
+        <motion.div
+          className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-black p-6 text-[#f8f3e8]"
+          whileHover={{ y: -4 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <div className="absolute inset-0 deck-grid opacity-20" />
+          <div className="relative text-2xl font-black uppercase tracking-[0.32em]">
+            Tapp
+          </div>
+          <div className="relative h-14 w-20 rounded-xl bg-[#c8ff45]" />
+          <div className="relative">
+            <p className="text-lg font-black uppercase leading-none text-[#c8ff45]">
+              Dynamic NFC
+            </p>
+            <p className="mt-1.5 text-sm font-bold text-white/70">
+              A new code on every tap
+            </p>
+          </div>
+        </motion.div>
+
+        <div className="grid content-center gap-2.5">
+          {networkPoints.map((point) => (
+            <motion.div
+              key={point.title}
+              className="rounded-2xl border border-black/[0.06] bg-white/70 px-4 py-2.5"
+              whileHover={{ x: 6 }}
+              transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            >
+              <h3 className="text-base font-black uppercase leading-none">
+                {point.title}
+              </h3>
+              <p className="mt-1.5 text-[13px] font-bold leading-snug text-black/70">
+                {point.copy}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoadmapSlide() {
+  return (
+    <div className="relative flex flex-col justify-between h-[63vh] w-full max-w-7xl rounded-[2rem] bg-[#f0ede5] p-6 text-[#111] md:p-8 overflow-hidden select-none">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6b6b2f]">
+          roadmap
+        </p>
+        <h1 className="mt-2 text-[clamp(2.2rem,4.6vw,4.6rem)] font-black uppercase leading-[0.9]">
+          The next four quarters<span className="text-[#c8ff45]">.</span>
+        </h1>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 flex-1 min-h-0 items-stretch">
+        {roadmap.map((phase) => (
+          <motion.div
+            key={phase.quarter}
+            className="flex flex-col rounded-3xl bg-white/70 p-5 border border-black/[0.06]"
+            whileHover={{ y: -4 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          >
+            <span
+              className={`self-start rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
+                phase.current
+                  ? "bg-[#c8ff45] text-[#111]"
+                  : "bg-black text-[#c8ff45]"
+              }`}
+            >
+              {phase.quarter}
+            </span>
+
+            <h3 className="mt-3 text-xl font-black uppercase leading-[0.95]">
+              {phase.title}
+            </h3>
+
+            <RoadmapTrack label="Build" items={phase.build} />
+            <RoadmapTrack label="Grow" items={phase.grow} />
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoadmapTrack({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div className="mt-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6b6b2f]">
+        {label}
+      </p>
+      <ul className="mt-1.5 grid gap-1 text-[13px] font-bold leading-snug text-black/75">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className="mt-[7px] size-1 shrink-0 rounded-full bg-current opacity-50" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
